@@ -154,6 +154,15 @@ const chairSpacing = 2;
 const rowSpacing = 2.5;
 const rowElevation = -0.5; // Each row is higher than the previous
 
+
+const platformThickness = 1;
+const platformMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x333333,
+    roughness: 0.7,
+    metalness: 0.3
+});
+
+
 // Load cinema chair model
 const loader = new GLTFLoader();
 loader.load(
@@ -173,6 +182,17 @@ loader.load(
             const rowZ = roomDepth/4 - row * rowSpacing;
             const rowY = row * rowElevation;
             
+            if (row < rowCount-1) {
+                const platformWidth = (chairsPerRow - 1) * chairSpacing + 1.5;
+                const platformDepth = rowSpacing * 1;
+                const platformGeometry = new THREE.BoxGeometry(platformWidth, platformThickness, platformDepth);
+                const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+                platform.position.set(0, rowY + 2 - platformThickness/2, rowZ);
+                platform.receiveShadow = true;
+                scene.add(platform);
+            }
+
+
             for (let chair = 0; chair < chairsPerRow; chair++) {
                 const chairX = (chair - (chairsPerRow - 1) / 2) * chairSpacing;
                 const chairClone = chairModel.clone();
