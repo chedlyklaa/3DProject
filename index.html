@@ -7,9 +7,26 @@
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        #lightButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+        }
+        #lightButton:hover {
+            background-color: #444;
+        }
     </style>
 </head>
 <body>
+    <button id="lightButton">Toggle Light</button>
     <script type="importmap">
         {
             "imports": {

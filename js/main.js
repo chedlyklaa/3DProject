@@ -29,6 +29,17 @@ spotLight.position.set(0, 10, 10);
 spotLight.castShadow = true;
 scene.add(spotLight);
 
+// Store original spotlight intensity
+const originalIntensity = spotLight.intensity;
+
+// Light toggle function
+function toggleLight() {
+    spotLight.intensity = spotLight.intensity > 0 ? 0 : originalIntensity;
+}
+
+// Add click event listener to the light button
+document.getElementById('lightButton').addEventListener('click', toggleLight);
+
 // Cinema room dimensions
 const roomWidth = 20;
 const roomHeight = 10;
@@ -43,7 +54,18 @@ floor.receiveShadow = true;
 scene.add(floor);
 
 // Walls
-const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+// Load wood texture
+const textureLoader = new THREE.TextureLoader();
+const woodTexture = textureLoader.load('textures/wood_texture.svg');
+woodTexture.wrapS = THREE.RepeatWrapping;
+woodTexture.wrapT = THREE.RepeatWrapping;
+woodTexture.repeat.set(4, 2);
+
+const wallMaterial = new THREE.MeshStandardMaterial({
+    map: woodTexture,
+    roughness: 0.8,
+    metalness: 0.2
+});
 
 // Back wall
 const backWallGeometry = new THREE.PlaneGeometry(roomWidth, roomHeight);
@@ -69,12 +91,45 @@ scene.add(rightWall);
 // Screen
 const screenWidth = roomWidth * 0.8;
 const screenHeight = roomHeight * 0.6;
+// Create video element
+const video = document.createElement('video');
+video.src = './video/cinema_screen.mp4';
+video.loop = true;
+video.muted = true;
+video.playsInline = true;
+video.crossOrigin = 'anonymous';
+
+// Create video texture and screen before playing the video
+const videoTexture = new THREE.VideoTexture(video);
+videoTexture.minFilter = THREE.LinearFilter;
+videoTexture.magFilter = THREE.LinearFilter;
+videoTexture.format = THREE.RGBAFormat;
+
 const screenGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight);
-const screenMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const screenMaterial = new THREE.MeshBasicMaterial({
+    map: videoTexture,
+    side: THREE.DoubleSide,
+    transparent: true
+});
 const screen = new THREE.Mesh(screenGeometry, screenMaterial);
 screen.position.z = -roomDepth/2 + 0.1; // Slightly in front of back wall
 screen.position.y = roomHeight * 0.5;
 scene.add(screen);
+
+// Add event listeners for video
+video.addEventListener('canplay', () => {
+    console.log('Video can play');
+    video.play().catch(e => console.error('Error playing video:', e));
+});
+
+video.addEventListener('error', (e) => {
+    console.error('Video error:', e);
+    console.error('Video error details:', e.target.error);
+});
+
+// Load and play the video
+video.load();
+
 
 // Handle window resize
 window.addEventListener('resize', onWindowResize, false);
@@ -97,7 +152,7 @@ const rowCount = 5;
 const chairsPerRow = 8;
 const chairSpacing = 2;
 const rowSpacing = 2.5;
-const rowElevation = 0.5; // Each row is higher than the previous
+const rowElevation = -0.5; // Each row is higher than the previous
 
 // Load cinema chair model
 const loader = new GLTFLoader();
@@ -122,7 +177,7 @@ loader.load(
                 const chairX = (chair - (chairsPerRow - 1) / 2) * chairSpacing;
                 const chairClone = chairModel.clone();
                 
-                chairClone.position.set(chairX, rowY + 1, rowZ);
+                chairClone.position.set(chairX, rowY + 3, rowZ);
                 chairClone.rotation.y = 0.5*Math.PI; // Face the screen
                 scene.add(chairClone);
             }
