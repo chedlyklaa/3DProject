@@ -156,11 +156,18 @@ const rowElevation = -0.5; // Each row is higher than the previous
 
 
 const platformThickness = 1;
-const platformMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0x333333,
+const grayPlatformMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x555759,  // Gray color
     roughness: 0.7,
     metalness: 0.3
 });
+
+const bluePlatformMaterial = new THREE.MeshStandardMaterial({
+    color: 0x3498db,  // Blue color
+    roughness: 0.7,
+    metalness: 0.3
+});
+
 
 
 // Load cinema chair model
@@ -183,11 +190,18 @@ loader.load(
             const rowY = row * rowElevation;
             
             if (row < rowCount-1) {
-                const platformWidth = (chairsPerRow - 1) * chairSpacing + 1.5;
+                const platformWidth = roomWidth - 0.2;
                 const platformDepth = rowSpacing * 1;
-                const platformGeometry = new THREE.BoxGeometry(platformWidth, platformThickness, platformDepth);
-                const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-                platform.position.set(0, rowY + 2 - platformThickness/2, rowZ);
+                const requiredThickness = rowY + 2;
+                
+                const platformGeometry = new THREE.BoxGeometry(platformWidth, requiredThickness, platformDepth);
+                const platform = new THREE.Mesh(platformGeometry, grayPlatformMaterial);
+                
+                platform.position.set(
+                    0,
+                    rowY + 2 - (requiredThickness/2),
+                    rowZ
+                );
                 platform.receiveShadow = true;
                 scene.add(platform);
             }
