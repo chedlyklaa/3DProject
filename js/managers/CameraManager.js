@@ -21,9 +21,10 @@ class CameraManager {
         // Controls setup
         this.controls = new OrbitControls(this.camera, renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = 0.1;
         this.controls.enablePan = false;
         this.controls.enableZoom = true;
+        this.controls.rotateSpeed = 0.5;
 
         // Transition parameters
         this.isTransitioning = false;
@@ -63,13 +64,16 @@ class CameraManager {
         // Définir le centre de rotation comme étant légèrement devant la caméra
         this.rotationCenter.copy(chairView.position);
         const forward = new THREE.Vector3().subVectors(chairView.target, chairView.position).normalize();
-        this.rotationCenter.add(forward.multiplyScalar(1)); // Centre de rotation à 1 unité devant la caméra
+        this.rotationCenter.add(forward.multiplyScalar(1));
         
         // Configurer les contrôles pour la rotation sur place
         this.controls.target.copy(this.rotationCenter);
         this.controls.enabled = true;
         this.controls.enableZoom = false;
         this.isInChairView = true;
+
+        // Inverser les mouvements de la souris avec une sensibilité réduite
+        this.controls.rotateSpeed = -0.3;
     }
 
     resetView() {
@@ -87,6 +91,9 @@ class CameraManager {
         this.controls.enabled = true;
         this.controls.enableZoom = true;
         this.isInChairView = false;
+
+        // Remettre la vitesse de rotation normale
+        this.controls.rotateSpeed = 0.5;
     }
 
     update() {
