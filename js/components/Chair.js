@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { CHAIR_CONFIG, COLORS, MATERIALS, PATHS } from '../utils/constants.js';
-import { createMeshWithMaterial } from '../utils/helpers.js';
+import { CHAIR_CONFIG, COLORS, MATERIALS } from '../utils/constants.js';
 
 class Chair {
     constructor(scene) {
@@ -9,15 +8,37 @@ class Chair {
         this.instancedMesh = null;
         this.loader = new GLTFLoader();
         this.originalMaterials = new Map();
+        
+        // Configuration du modèle de chaise
+        this.modelConfig = {
+            path: './models/cinema_chair_simple__0410212306_texture.glb',
+            scale: { x: 1, y: 1, z: 1 },
+            rotation: { x: 0, y: Math.PI * 0.5, z: 0 },
+            position: { x: 0, y: 3, z: 0 }
+        };
+    }
+
+    // Méthode pour changer facilement le modèle de chaise
+    setModel(config) {
+        this.modelConfig = {
+            ...this.modelConfig,  // Garde les valeurs par défaut
+            ...config            // Remplace par les nouvelles valeurs
+        };
     }
 
     async loadModel() {
         return new Promise((resolve, reject) => {
             this.loader.load(
-                './models/cinema_chair_simple__0410212306_texture.glb',
+                this.modelConfig.path,
                 (gltf) => {
                     const chairModel = gltf.scene;
-                    chairModel.scale.set(1, 1, 1);
+                    
+                    // Appliquer la configuration
+                    chairModel.scale.set(
+                        this.modelConfig.scale.x,
+                        this.modelConfig.scale.y,
+                        this.modelConfig.scale.z
+                    );
                     
                     let chairMesh = null;
                     chairModel.traverse((node) => {
@@ -53,11 +74,9 @@ class Chair {
 
                     resolve(chairMesh);
                 },
-                // Progress callback
                 (progress) => {
                     console.log('Loading model:', (progress.loaded / progress.total * 100) + '%');
                 },
-                // Error callback
                 (error) => {
                     console.error('Error loading model:', error);
                     reject(error);
@@ -70,7 +89,6 @@ class Chair {
         try {
             const chairMesh = await this.loadModel();
             
-            // Create instanced mesh
             const instanceCount = CHAIR_CONFIG.ROWS * CHAIR_CONFIG.CHAIRS_PER_ROW;
             this.instancedMesh = new THREE.InstancedMesh(
                 chairMesh.geometry,
@@ -80,7 +98,6 @@ class Chair {
             this.instancedMesh.castShadow = true;
             this.instancedMesh.receiveShadow = true;
 
-            // Create and apply matrices for each instance
             const matrix = new THREE.Matrix4();
             let instanceIndex = 0;
 
@@ -88,17 +105,23 @@ class Chair {
                 const rowZ = roomDimensions.depth/4 - row * CHAIR_CONFIG.ROW_SPACING;
                 const rowY = row * CHAIR_CONFIG.ROW_ELEVATION;
 
-                // Create platform for each row
                 if (row < CHAIR_CONFIG.ROWS-1) {
                     this.createPlatform(rowY, rowZ, roomDimensions.width);
                 }
 
-                // Create chairs for the row
                 for (let chair = 0; chair < CHAIR_CONFIG.CHAIRS_PER_ROW; chair++) {
                     const chairX = (chair - (CHAIR_CONFIG.CHAIRS_PER_ROW - 1) / 2) * CHAIR_CONFIG.SPACING;
                     
-                    matrix.makeRotationY(Math.PI * 0.5);
-                    matrix.setPosition(chairX, rowY + 3, rowZ);
+                    matrix.makeRotationFromEuler(new THREE.Euler(
+                        this.modelConfig.rotation.x,
+                        this.modelConfig.rotation.y,
+                        this.modelConfig.rotation.z
+                    ));
+                    matrix.setPosition(
+                        chairX + this.modelConfig.position.x,
+                        rowY + this.modelConfig.position.y,
+                        rowZ + this.modelConfig.position.z
+                    );
                     this.instancedMesh.setMatrixAt(instanceIndex, matrix);
                     instanceIndex++;
                 }
@@ -119,10 +142,12 @@ class Chair {
             Math.abs(CHAIR_CONFIG.ROW_ELEVATION) + 2,
             CHAIR_CONFIG.ROW_SPACING * 1
         );
-        const platform = createMeshWithMaterial(
+        const platform = new THREE.Mesh(
             platformGeometry,
-            MATERIALS.CHAIR,
-            COLORS.PLATFORM
+            new THREE.MeshStandardMaterial({
+                color: COLORS.PLATFORM,
+                ...MATERIALS.CHAIR
+            })
         );
         platform.position.set(
             0,

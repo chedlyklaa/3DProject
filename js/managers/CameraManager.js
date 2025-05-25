@@ -48,6 +48,17 @@ class CameraManager {
         this.fixedPosition = new THREE.Vector3();
         this.initialLookAt = new THREE.Vector3();
         this.rotationCenter = new THREE.Vector3();
+
+        // Ajouter l'écouteur d'événement pour la touche Échap
+        this.setupKeyboardControls();
+    }
+
+    setupKeyboardControls() {
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && this.isInChairView) {
+                this.resetView();
+            }
+        });
     }
 
     transitionToChair(chairView) {
