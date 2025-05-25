@@ -22,6 +22,8 @@ class CameraManager {
         this.controls = new OrbitControls(this.camera, renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+        this.controls.enablePan = false;
+        this.controls.enableZoom = true;
 
         // Transition parameters
         this.isTransitioning = false;
@@ -31,6 +33,20 @@ class CameraManager {
         this.targetPosition = new THREE.Vector3();
         this.startTarget = new THREE.Vector3();
         this.endTarget = new THREE.Vector3();
+
+        // Limites de rotation verticale (en radians)
+        this.controls.minPolarAngle = Math.PI * 0.25; // 45 degrés vers le haut
+        this.controls.maxPolarAngle = Math.PI * 0.75; // 45 degrés vers le bas
+
+        // Limites de rotation horizontale
+        this.controls.minAzimuthAngle = -Math.PI * 0.5; // 90 degrés à gauche
+        this.controls.maxAzimuthAngle = Math.PI * 0.5;  // 90 degrés à droite
+
+        // État de la vue
+        this.isInChairView = false;
+        this.fixedPosition = new THREE.Vector3();
+        this.initialLookAt = new THREE.Vector3();
+        this.rotationCenter = new THREE.Vector3();
     }
 
     transitionToChair(chairView) {
@@ -40,8 +56,20 @@ class CameraManager {
         this.startPosition.copy(this.camera.position);
         this.targetPosition.copy(chairView.position);
         
-        this.controls.target.copy(chairView.target);
-        this.controls.enabled = false;
+        // Sauvegarder la position fixe et le point de vue initial
+        this.fixedPosition.copy(chairView.position);
+        this.initialLookAt.copy(chairView.target);
+        
+        // Définir le centre de rotation comme étant légèrement devant la caméra
+        this.rotationCenter.copy(chairView.position);
+        const forward = new THREE.Vector3().subVectors(chairView.target, chairView.position).normalize();
+        this.rotationCenter.add(forward.multiplyScalar(1)); // Centre de rotation à 1 unité devant la caméra
+        
+        // Configurer les contrôles pour la rotation sur place
+        this.controls.target.copy(this.rotationCenter);
+        this.controls.enabled = true;
+        this.controls.enableZoom = false;
+        this.isInChairView = true;
     }
 
     resetView() {
@@ -57,6 +85,8 @@ class CameraManager {
         
         this.controls.target.set(0, 0, 0);
         this.controls.enabled = true;
+        this.controls.enableZoom = true;
+        this.isInChairView = false;
     }
 
     update() {
@@ -73,11 +103,17 @@ class CameraManager {
             if (progress >= 1) {
                 this.isTransitioning = false;
             }
+        } else if (this.isInChairView) {
+            // Forcer la position de la caméra à rester fixe
+            this.camera.position.copy(this.fixedPosition);
+            
+            // Mettre à jour le centre de rotation pour qu'il reste toujours devant la caméra
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+            this.rotationCenter.copy(this.fixedPosition).add(forward);
+            this.controls.target.copy(this.rotationCenter);
         }
 
-        if (this.controls.enabled) {
-            this.controls.update();
-        }
+        this.controls.update();
     }
 
     onWindowResize() {
