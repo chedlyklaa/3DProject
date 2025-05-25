@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salle de Conférence Virtuelle</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./node_modules/three/build/three.module.js",
+            "three/addons/": "./node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        .controls-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+        .control-group {
+            margin: 10px 0;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 0;
+            width: 100%;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button.active {
+            background: #4CAF50;
+        }
+        select {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 3px;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        .size-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .size-controls input {
+            width: 45%;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls-panel">
+        <div class="control-group">
+            <button id="toggleCamera">🎥 Activer/Désactiver Caméra</button>
+        </div>
+        <div class="control-group">
+            <label>Sélectionner la caméra:</label>
+            <select id="cameraSelect">
+                <option value="">Chargement des caméras...</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Taille de la vidéo:</label>
+            <div class="size-controls">
+                <input type="range" id="videoWidth" min="50" max="150" value="100" title="Largeur">
+                <input type="range" id="videoHeight" min="50" max="150" value="100" title="Hauteur">
+            </div>
+        </div>
+        <div class="control-group">
+            <button id="mirrorVideo">🔄 Inverser la vidéo</button>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
