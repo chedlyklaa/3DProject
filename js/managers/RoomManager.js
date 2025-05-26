@@ -66,20 +66,20 @@ class RoomManager {
         const toggleButton = document.getElementById('toggleCamera');
         
         if (this.isCameraActive) {
-            // Désactiver la caméra
+            // Désactiver la caméra et le son
             if (this.currentStream) {
                 this.currentStream.getTracks().forEach(track => track.stop());
                 this.currentStream = null;
             }
             if (this.screenMesh) {
-                this.screenMesh.material.map = null;
-                this.screenMesh.material.needsUpdate = true;
+                this.scene.remove(this.screenMesh);
+                this.screenMesh = null;
             }
             this.isCameraActive = false;
             toggleButton.classList.remove('active');
         } else {
             // Activer la caméra
-            await this.setupCamera();
+            this.setupCamera();
             toggleButton.classList.add('active');
         }
     }
@@ -121,7 +121,8 @@ class RoomManager {
 
         try {
             const constraints = {
-                video: deviceId ? { deviceId: { exact: deviceId } } : true
+                video: deviceId ? { deviceId: { exact: deviceId } } : true,
+                audio: true // Ajout de l'audio
             };
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -131,7 +132,18 @@ class RoomManager {
             const video = document.createElement('video');
             video.autoplay = true;
             video.playsInline = true;
-            video.muted = true;
+            
+            // Ne plus mettre la vidéo en muet pour entendre le son
+            video.muted = false;
+            video.volume = 0.5; // Volume par défaut à 50%
+
+            // Ajouter le contrôle du volume
+            const volumeControl = document.getElementById('videoVolume');
+            if (volumeControl) {
+                volumeControl.addEventListener('input', (e) => {
+                    video.volume = e.target.value / 100;
+                });
+            }
 
             // Attendre que la vidéo soit chargée
             video.addEventListener('loadedmetadata', () => {
@@ -145,6 +157,11 @@ class RoomManager {
             video.srcObject = stream;
             await video.play().catch(e => console.error('Erreur lecture vidéo:', e));
 
+            // S'assurer qu'il n'y a qu'un seul écran
+            if (this.screenMesh) {
+                this.scene.remove(this.screenMesh);
+            }
+
             // Créer ou mettre à jour la texture
             if (!this.videoTexture) {
                 this.videoTexture = new THREE.VideoTexture(video);
@@ -157,14 +174,8 @@ class RoomManager {
                 this.videoTexture.needsUpdate = true;
             }
 
-            // Créer ou mettre à jour l'écran
-            if (!this.screenMesh) {
-                this.createScreen();
-            } else {
-                this.screenMesh.material.map = this.videoTexture;
-                this.screenMesh.material.needsUpdate = true;
-            }
-
+            // Créer l'écran
+            this.createScreen();
             this.isCameraActive = true;
 
         } catch (error) {

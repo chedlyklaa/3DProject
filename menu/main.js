@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 // Variables globales Three.js
 let scene,
   camera,
@@ -5,6 +7,12 @@ let scene,
   objects = [],
   controls,
   textureLoader;
+
+const themeSelect = document.getElementById('themeSelect');
+const newConferenceBtn = document.getElementById('newConferenceBtn');
+const cameraOverlay = document.getElementById('cameraOverlay');
+const closeCameraBtn = document.getElementById('closeCamera');
+const userVideo = document.getElementById('userVideo');
 
 // Initialisation de Three.js
 function initThreeJS() {
@@ -694,9 +702,9 @@ async function setupCamera() {
 
   newConferenceBtn.addEventListener("click", async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
       });
       userVideo.srcObject = stream;
       cameraContainer.style.display = "block";
@@ -707,11 +715,11 @@ async function setupCamera() {
       );
     }
   });
-
-  closeCameraBtn.addEventListener("click", () => {
+  
+  closeCameraBtn.addEventListener('click', () => {
     const stream = userVideo.srcObject;
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach(track => track.stop());
       userVideo.srcObject = null;
     }
     cameraContainer.style.display = "none";
