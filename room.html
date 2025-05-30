@@ -37,6 +37,22 @@
             z-index: 1000;
             backdrop-filter: blur(5px);
         }
+        .camera-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
         .control-group {
             margin: 10px 0;
         }
@@ -59,6 +75,21 @@
         }
         button.active {
             background: #4CAF50;
+        }
+        .camera-mode-indicator {
+            padding: 5px 10px;
+            border-radius: 3px;
+            background: #333;
+            margin-right: 10px;
+        }
+        .quick-view-btn {
+            background: #ff9800;
+        }
+        .quick-view-btn:hover {
+            background: #f57c00;
+        }
+        .quick-view-btn.active {
+            background: #ff5722;
         }
         select {
             width: 100%;
@@ -107,6 +138,11 @@
         <div class="control-group">
             <button id="mirrorVideo">🔄 Inverser la vidéo</button>
         </div>
+    </div>
+
+    <div class="camera-controls">
+        <span class="camera-mode-indicator" id="cameraModeIndicator">Mode: Participant</span>
+        <button id="quickViewToggle" class="quick-view-btn">🔄 Vue Écran Rapide</button>
     </div>
 
     <script type="module" src="js/main.js"></script>

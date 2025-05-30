@@ -74,10 +74,16 @@ class MenuManager {
 
     setupEventListeners() {
         // Bouton pour rejoindre une conférence
-        const joinButton = document.querySelector('.btn:nth-child(2)');
+        const joinButton = document.getElementById('joinConferenceBtn');
         if (joinButton) {
             joinButton.addEventListener('click', () => {
-                window.location.href = 'room.html';
+                // Générer un ID unique pour la session
+                const sessionId = Math.random().toString(36).substring(7);
+                // Stocker le rôle dans le localStorage
+                localStorage.setItem('userRole', 'participant');
+                localStorage.setItem('sessionId', sessionId);
+                // Rediriger vers la salle avec les paramètres
+                window.location.href = `room.html?role=participant&session=${sessionId}`;
             });
         }
 
@@ -85,7 +91,13 @@ class MenuManager {
         const newConfButton = document.getElementById('newConferenceBtn');
         if (newConfButton) {
             newConfButton.addEventListener('click', () => {
-                window.location.href = 'room.html';
+                // Générer un ID unique pour la session
+                const sessionId = Math.random().toString(36).substring(7);
+                // Stocker le rôle dans le localStorage
+                localStorage.setItem('userRole', 'presenter');
+                localStorage.setItem('sessionId', sessionId);
+                // Rediriger vers la salle avec les paramètres
+                window.location.href = `room.html?role=presenter&session=${sessionId}`;
             });
         }
 

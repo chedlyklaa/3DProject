@@ -9,8 +9,8 @@ export function createMeshWithMaterial(geometry, materialConfig, color) {
     return new THREE.Mesh(geometry, material);
 }
 
-export function easeInOutCubic(x) {
-    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+export function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 export function loadTexture(textureLoader, path, options = {}) {

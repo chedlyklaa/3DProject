@@ -21,26 +21,46 @@ class RoomManager {
     }
 
     setupControls() {
+        const isPresenter = localStorage.getItem('userRole') === 'presenter';
+        
+        // Contrôles de caméra uniquement pour le présentateur
+        const cameraControls = document.querySelector('.controls-panel');
+        if (cameraControls) {
+            cameraControls.style.display = isPresenter ? 'block' : 'none';
+        }
+
+        if (!isPresenter) return; // Sortir si ce n'est pas un présentateur
+
         // Bouton pour activer/désactiver la caméra
         const toggleButton = document.getElementById('toggleCamera');
-        toggleButton.addEventListener('click', () => this.toggleCamera());
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => this.toggleCamera());
+        }
 
         // Sélecteur de caméra
         const cameraSelect = document.getElementById('cameraSelect');
-        cameraSelect.addEventListener('change', (e) => this.switchCamera(e.target.value));
+        if (cameraSelect) {
+            cameraSelect.addEventListener('change', (e) => this.switchCamera(e.target.value));
+        }
 
         // Contrôles de taille
         const widthControl = document.getElementById('videoWidth');
         const heightControl = document.getElementById('videoHeight');
-        widthControl.addEventListener('input', () => this.updateVideoSize());
-        heightControl.addEventListener('input', () => this.updateVideoSize());
+        if (widthControl && heightControl) {
+            widthControl.addEventListener('input', () => this.updateVideoSize());
+            heightControl.addEventListener('input', () => this.updateVideoSize());
+        }
 
         // Bouton pour inverser la vidéo
         const mirrorButton = document.getElementById('mirrorVideo');
-        mirrorButton.addEventListener('click', () => this.toggleMirror());
+        if (mirrorButton) {
+            mirrorButton.addEventListener('click', () => this.toggleMirror());
+        }
 
         // Charger la liste des caméras
-        this.loadCameraList();
+        if (isPresenter) {
+            this.loadCameraList();
+        }
     }
 
     async loadCameraList() {
