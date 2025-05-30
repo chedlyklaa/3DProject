@@ -4,134 +4,151 @@ import { COLORS } from '../utils/constants.js';
 class ChairManager {
     constructor(scene) {
         this.scene = scene;
-        this.chairs = new Map(); // Map to store chair objects with their IDs
+        this.chairs = new Map(); // Map to store chair data
         this.selectedChair = null;
-        this.occupiedChairs = new Set();
-        this.instancedMesh = null;
-        this.originalColor = new THREE.Color(COLORS.CHAIR_DEFAULT);
-        this.selectedColor = new THREE.Color(COLORS.CHAIR_SELECTED);
-        this.occupiedColor = new THREE.Color(COLORS.CHAIR_OCCUPIED);
+        this.occupiedChairs = new Set(); // Track occupied chairs
+        
+        // Get participant info
+        this.participantInfo = JSON.parse(localStorage.getItem('participantInfo') || '{}');
+        this.isCreator = this.participantInfo.role === 'host';
+
+        // Reference to camera manager (will be set later)
+        this.cameraManager = null;
     }
 
-    // Add a chair to the manager
-    addChair(instancedMesh, rowIndex, chairIndex, instanceId) {
-        const chairId = `chair_${rowIndex}_${chairIndex}`;
+    addChair(instancedMesh, row, chairNumber, instanceId) {
+        const chairData = {
+            instanceId,
+            row,
+            chairNumber,
+            mesh: instancedMesh,
+            isOccupied: false,
+            occupiedBy: null,
+            color: new THREE.Color(0xcccccc) // Default chair color
+        };
         
-        // Store the instanced mesh on first chair
-        if (!this.instancedMesh) {
-            this.instancedMesh = instancedMesh;
+        this.chairs.set(instanceId, chairData);
+
+        // Only add click listeners for participants
+        if (!this.isCreator) {
+            this.addChairClickListener(chairData);
+        }
+    }
+
+    addChairClickListener(chairData) {
+        // Add raycaster for chair selection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            if (!this.cameraManager || this.isCreator) return;
+
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, this.cameraManager.getCamera());
+
+            // Check for intersections with this specific chair
+            const intersects = raycaster.intersectObject(chairData.mesh);
             
-            // Initialize instance colors
-            const colorArray = new Float32Array(instancedMesh.count * 3);
-            for (let i = 0; i < instancedMesh.count; i++) {
-                colorArray[i * 3] = this.originalColor.r;
-                colorArray[i * 3 + 1] = this.originalColor.g;
-                colorArray[i * 3 + 2] = this.originalColor.b;
+            if (intersects.length > 0) {
+                const instanceId = intersects[0].instanceId;
+                if (instanceId === chairData.instanceId) {
+                    this.selectChair(chairData);
+                }
             }
-            this.instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colorArray, 3);
-            this.instancedMesh.geometry.setAttribute('instanceColor', this.instancedMesh.instanceColor);
-        }
-
-        const chair = {
-            id: chairId,
-            instanceId: instanceId,
-            row: rowIndex,
-            position: chairIndex,
-            isOccupied: false
-        };
-
-        this.chairs.set(chairId, chair);
-        
-        // Store chair data for raycasting
-        instancedMesh.userData.chairs = instancedMesh.userData.chairs || new Map();
-        instancedMesh.userData.chairs.set(instanceId, chairId);
+        });
     }
 
-    // Select a chair
-    selectChair(chairId) {
-        if (this.occupiedChairs.has(chairId)) {
-            console.log('Cette chaise est déjà occupée');
-            return false;
+    selectChair(chairData) {
+        if (this.isCreator) return; // Creator can't select chairs
+        
+        if (chairData.isOccupied && chairData.occupiedBy !== this.participantInfo.name) {
+            alert('Cette chaise est déjà occupée par ' + chairData.occupiedBy);
+            return;
         }
 
-        const chair = this.chairs.get(chairId);
-        if (!chair) return false;
-
-        // Reset previous selection
+        // If participant was sitting somewhere else, free that chair
         if (this.selectedChair) {
-            const prevChair = this.chairs.get(this.selectedChair);
-            if (prevChair && !this.occupiedChairs.has(this.selectedChair)) {
-                this.updateChairColor(prevChair.instanceId, this.originalColor);
-            }
+            this.selectedChair.isOccupied = false;
+            this.selectedChair.occupiedBy = null;
+            this.updateChairAppearance(this.selectedChair, false);
         }
 
-        this.updateChairColor(chair.instanceId, this.selectedColor);
-        this.selectedChair = chairId;
+        // Select new chair
+        this.selectedChair = chairData;
+        chairData.isOccupied = true;
+        chairData.occupiedBy = this.participantInfo.name;
+        this.updateChairAppearance(chairData, true);
 
-        return true;
-    }
-
-    // Occupy a chair
-    occupyChair(chairId) {
-        const chair = this.chairs.get(chairId);
-        if (!chair || this.occupiedChairs.has(chairId)) return false;
-
-        chair.isOccupied = true;
-        this.occupiedChairs.add(chairId);
-        this.updateChairColor(chair.instanceId, this.occupiedColor);
-
-        return true;
-    }
-
-    // Release a chair
-    releaseChair(chairId) {
-        const chair = this.chairs.get(chairId);
-        if (!chair || !this.occupiedChairs.has(chairId)) return false;
-
-        chair.isOccupied = false;
-        this.occupiedChairs.delete(chairId);
-        this.updateChairColor(chair.instanceId, this.originalColor);
-
-        return true;
-    }
-
-    // Update chair color
-    updateChairColor(instanceId, color) {
-        if (!this.instancedMesh || !this.instancedMesh.instanceColor) return;
+        // Get chair position for camera
+        const chairPosition = this.getChairPosition(chairData);
         
-        this.instancedMesh.instanceColor.setXYZ(instanceId, color.r, color.g, color.b);
-        this.instancedMesh.instanceColor.needsUpdate = true;
+        // Trigger camera transition to chair view
+        if (this.cameraManager) {
+            this.cameraManager.transitionToChairView(chairPosition);
+        }
+
+        // Store chair selection in localStorage
+        this.saveChairSelection(chairData);
     }
 
-    // Get chair position for camera
-    getChairCameraPosition(chairId) {
-        const chair = this.chairs.get(chairId);
-        if (!chair || !this.instancedMesh) return null;
+    updateChairAppearance(chairData, isSelected) {
+        if (!chairData.mesh || !chairData.mesh.instanceColor) return;
 
-        const matrix = new THREE.Matrix4();
-        this.instancedMesh.getMatrixAt(chair.instanceId, matrix);
+        const color = isSelected ? new THREE.Color(0x00ff00) : chairData.color;
+        const colorArray = chairData.mesh.instanceColor.array;
+        const index = chairData.instanceId * 3;
+
+        colorArray[index] = color.r;
+        colorArray[index + 1] = color.g;
+        colorArray[index + 2] = color.b;
+
+        chairData.mesh.instanceColor.needsUpdate = true;
+    }
+
+    getChairPosition(chairData) {
         const position = new THREE.Vector3();
-        matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+        const quaternion = new THREE.Quaternion();
+        const scale = new THREE.Vector3();
 
-        return {
-            position: new THREE.Vector3(
-                position.x,
-                position.y + 1.2,
-                position.z + 0.3
-            ),
-            target: new THREE.Vector3(0, position.y + 1.0, -12.5)
+        chairData.mesh.getMatrixAt(chairData.instanceId, new THREE.Matrix4()).decompose(
+            position,
+            quaternion,
+            scale
+        );
+
+        return position;
+    }
+
+    saveChairSelection(chairData) {
+        const selectionData = {
+            instanceId: chairData.instanceId,
+            row: chairData.row,
+            chairNumber: chairData.chairNumber,
+            participantName: this.participantInfo.name,
+            conferenceId: this.participantInfo.conferenceId
         };
+        localStorage.setItem('selectedChair', JSON.stringify(selectionData));
     }
 
-    // Check if a chair is occupied
-    isChairOccupied(chairId) {
-        return this.occupiedChairs.has(chairId);
+    loadSavedChairSelection() {
+        if (this.isCreator) return; // Creator doesn't need to load chair selection
+
+        const savedSelection = JSON.parse(localStorage.getItem('selectedChair'));
+        if (savedSelection && 
+            savedSelection.conferenceId === this.participantInfo.conferenceId &&
+            savedSelection.participantName === this.participantInfo.name) {
+            const chairData = this.chairs.get(savedSelection.instanceId);
+            if (chairData) {
+                this.selectChair(chairData);
+            }
+        }
     }
 
-    // Get chairId from instanceId (for raycasting)
-    getChairIdFromInstanceId(instanceId) {
-        if (!this.instancedMesh || !this.instancedMesh.userData.chairs) return null;
-        return this.instancedMesh.userData.chairs.get(instanceId);
+    setCameraManager(cameraManager) {
+        this.cameraManager = cameraManager;
     }
 }
 

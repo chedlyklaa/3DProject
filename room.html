@@ -80,9 +80,44 @@
         .size-controls input {
             width: 45%;
         }
+        .participant-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .participant-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #00ffe5;
+        }
+        .participant-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .conference-id {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
+    <div class="participant-info">
+        <h3>Information de la conférence</h3>
+        <p id="participantName"></p>
+        <p id="participantRole"></p>
+        <div class="conference-id" id="conferenceId"></div>
+    </div>
+
     <div class="controls-panel">
         <div class="control-group">
             <button id="toggleCamera">🎥 Activer/Désactiver Caméra</button>
@@ -108,6 +143,20 @@
             <button id="mirrorVideo">🔄 Inverser la vidéo</button>
         </div>
     </div>
+
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+            const participantInfo = JSON.parse(localStorage.getItem('participantInfo') || '{}');
+            
+            if (participantInfo.name) {
+                document.getElementById('participantName').textContent = `Nom: ${participantInfo.name}`;
+                document.getElementById('participantRole').textContent = `Rôle: ${participantInfo.role === 'host' ? 'Hôte' : 'Participant'}`;
+                document.getElementById('conferenceId').textContent = `ID: ${participantInfo.conferenceId}`;
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
 
     <script type="module" src="js/main.js"></script>
 </body>

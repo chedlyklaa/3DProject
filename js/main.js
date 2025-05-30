@@ -22,10 +22,14 @@ if (!isRoomPage) {
     const renderer = sceneManager.getRenderer();
     document.body.appendChild(renderer.domElement);
 
+    // Initialize managers
     const cameraManager = new CameraManager(renderer);
     const roomManager = new RoomManager(scene);
     const chairManager = new ChairManager(scene);
     const eventManager = new EventManager(sceneManager, cameraManager, chairManager);
+
+    // Connect chair manager with camera manager
+    chairManager.setCameraManager(cameraManager);
 
     // Initialize and create chairs
     async function initializeChairs() {
@@ -42,10 +46,12 @@ if (!isRoomPage) {
                 }
             }
 
+            // Load saved chair selection for participants
+            chairManager.loadSavedChairSelection();
+
             // Récupérer le thème sélectionné si disponible
             const selectedTheme = localStorage.getItem('selectedTheme');
             if (selectedTheme) {
-                // Appliquer le thème à la salle
                 roomManager.applyTheme(selectedTheme);
             }
         } catch (error) {

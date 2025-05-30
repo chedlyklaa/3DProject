@@ -73,10 +73,51 @@ class MenuManager {
     }
 
     setupEventListeners() {
-        // Bouton pour rejoindre une conférence
-        const joinButton = document.querySelector('.btn:nth-child(2)');
+        // Modal elements
+        const joinModal = document.getElementById('joinModal');
+        const joinButton = document.getElementById('joinConferenceBtn');
+        const closeModal = document.getElementById('closeModal');
+        const confirmJoin = document.getElementById('confirmJoin');
+        const conferenceId = document.getElementById('conferenceId');
+        const participantName = document.getElementById('participantName');
+
+        // Join conference button
         if (joinButton) {
             joinButton.addEventListener('click', () => {
+                joinModal.classList.add('active');
+            });
+        }
+
+        // Close modal button
+        if (closeModal) {
+            closeModal.addEventListener('click', () => {
+                joinModal.classList.remove('active');
+            });
+        }
+
+        // Confirm join button
+        if (confirmJoin) {
+            confirmJoin.addEventListener('click', () => {
+                const confId = conferenceId.value.trim();
+                const partName = participantName.value.trim();
+                
+                if (!confId || !partName) {
+                    alert('Veuillez remplir tous les champs');
+                    return;
+                }
+
+                // Store participant info
+                const participantInfo = {
+                    conferenceId: confId,
+                    name: partName,
+                    role: 'participant',
+                    joinTime: new Date().toISOString()
+                };
+
+                // Store in localStorage
+                localStorage.setItem('participantInfo', JSON.stringify(participantInfo));
+
+                // Redirect to room
                 window.location.href = 'room.html';
             });
         }
@@ -85,6 +126,18 @@ class MenuManager {
         const newConfButton = document.getElementById('newConferenceBtn');
         if (newConfButton) {
             newConfButton.addEventListener('click', () => {
+                // Generate a unique conference ID
+                const conferenceId = 'conf-' + Math.random().toString(36).substr(2, 9);
+                
+                // Store host info
+                const hostInfo = {
+                    conferenceId: conferenceId,
+                    name: 'Hôte',
+                    role: 'host',
+                    joinTime: new Date().toISOString()
+                };
+
+                localStorage.setItem('participantInfo', JSON.stringify(hostInfo));
                 window.location.href = 'room.html';
             });
         }
@@ -99,6 +152,13 @@ class MenuManager {
                 }
             });
         }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === joinModal) {
+                joinModal.classList.remove('active');
+            }
+        });
     }
 
     changeTheme(theme) {

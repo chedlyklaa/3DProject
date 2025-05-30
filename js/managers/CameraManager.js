@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CAMERA } from '../utils/constants.js';
+import { CAMERA_POSITIONS } from '../utils/cameraPositions.js';
 import { easeInOutCubic } from '../utils/helpers.js';
 
 class CameraManager {
     constructor(renderer) {
+        // Get participant info
+        this.participantInfo = JSON.parse(localStorage.getItem('participantInfo') || '{}');
+        this.isCreator = this.participantInfo.role === 'host';
+
         // Camera setup
         this.camera = new THREE.PerspectiveCamera(
             CAMERA.FOV,
@@ -12,102 +17,170 @@ class CameraManager {
             CAMERA.NEAR,
             CAMERA.FAR
         );
-        this.camera.position.set(
-            CAMERA.INITIAL_POSITION.x,
-            CAMERA.INITIAL_POSITION.y,
-            CAMERA.INITIAL_POSITION.z
-        );
+
+        // Set initial position based on role
+        this.setInitialPosition();
 
         // Controls setup
         this.controls = new OrbitControls(this.camera, renderer.domElement);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.1;
-        this.controls.enablePan = false;
-        this.controls.enableZoom = true;
-        this.controls.rotateSpeed = 0.5;
+        this.setupControlsBasedOnRole();
 
         // Transition parameters
         this.isTransitioning = false;
-        this.transitionDuration = CAMERA.TRANSITION_DURATION;
+        this.transitionDuration = 1000; // 1 second transition
         this.transitionStartTime = 0;
         this.startPosition = new THREE.Vector3();
         this.targetPosition = new THREE.Vector3();
-        this.startTarget = new THREE.Vector3();
-        this.endTarget = new THREE.Vector3();
+        this.startRotation = new THREE.Quaternion();
+        this.targetRotation = new THREE.Quaternion();
 
-        // Limites de rotation verticale (en radians)
-        this.controls.minPolarAngle = Math.PI * 0.25; // 45 degrés vers le haut
-        this.controls.maxPolarAngle = Math.PI * 0.75; // 45 degrés vers le bas
-
-        // Limites de rotation horizontale
-        this.controls.minAzimuthAngle = -Math.PI * 0.5; // 90 degrés à gauche
-        this.controls.maxAzimuthAngle = Math.PI * 0.5;  // 90 degrés à droite
-
-        // État de la vue
+        // Chair view parameters
         this.isInChairView = false;
-        this.fixedPosition = new THREE.Vector3();
-        this.initialLookAt = new THREE.Vector3();
-        this.rotationCenter = new THREE.Vector3();
-
-        // Ajouter l'écouteur d'événement pour la touche Échap
-        this.setupKeyboardControls();
+        this.chairPosition = null;
     }
 
-    setupKeyboardControls() {
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && this.isInChairView) {
-                this.resetView();
-            }
-        });
+    setInitialPosition() {
+        const config = this.isCreator ? CAMERA_POSITIONS.CREATOR : CAMERA_POSITIONS.PARTICIPANT;
+        
+        // Set position
+        this.camera.position.set(
+            config.position.x,
+            config.position.y,
+            config.position.z
+        );
+
+        // Set look at point
+        this.camera.lookAt(
+            config.lookAt.x,
+            config.lookAt.y,
+            config.lookAt.z
+        );
     }
 
-    transitionToChair(chairView) {
+    setupControlsBasedOnRole() {
+        const config = this.isCreator ? CAMERA_POSITIONS.CREATOR : CAMERA_POSITIONS.PARTICIPANT;
+
+        if (this.isCreator) {
+            // Creator has no camera controls - completely fixed position
+            this.controls.enabled = false;
+            this.controls.enableZoom = false;
+            this.controls.enablePan = false;
+            this.controls.enableRotate = false;
+            this.controls.enableDamping = false;
+
+            // Set fixed target for creator's view
+            this.controls.target.set(
+                CAMERA_POSITIONS.CREATOR.lookAt.x,
+                CAMERA_POSITIONS.CREATOR.lookAt.y,
+                CAMERA_POSITIONS.CREATOR.lookAt.z
+            );
+        } else {
+            // Participants can move and look around
+            this.controls.enabled = true;
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = 0.05;
+            this.controls.enablePan = false;
+            this.controls.enableZoom = true;
+            this.controls.rotateSpeed = 0.5;
+
+            // Apply rotation limits for participants
+            this.controls.minPolarAngle = config.limits.minPolarAngle;
+            this.controls.maxPolarAngle = config.limits.maxPolarAngle;
+            this.controls.minAzimuthAngle = config.limits.minAzimuthAngle;
+            this.controls.maxAzimuthAngle = config.limits.maxAzimuthAngle;
+        }
+    }
+
+    transitionToChairView(chairPosition) {
+        if (this.isCreator) return;
+
         this.isTransitioning = true;
         this.transitionStartTime = Date.now();
-        
-        this.startPosition.copy(this.camera.position);
-        this.targetPosition.copy(chairView.position);
-        
-        // Sauvegarder la position fixe et le point de vue initial
-        this.fixedPosition.copy(chairView.position);
-        this.initialLookAt.copy(chairView.target);
-        
-        // Définir le centre de rotation comme étant légèrement devant la caméra
-        this.rotationCenter.copy(chairView.position);
-        const forward = new THREE.Vector3().subVectors(chairView.target, chairView.position).normalize();
-        this.rotationCenter.add(forward.multiplyScalar(1));
-        
-        // Configurer les contrôles pour la rotation sur place
-        this.controls.target.copy(this.rotationCenter);
-        this.controls.enabled = true;
-        this.controls.enableZoom = false;
         this.isInChairView = true;
 
-        // Inverser les mouvements de la souris avec une sensibilité réduite
-        this.controls.rotateSpeed = -0.3;
+        // Save start position and rotation
+        this.startPosition.copy(this.camera.position);
+        this.startRotation.copy(this.camera.quaternion);
+
+        // Calculate target position (at eye level)
+        this.targetPosition.set(
+            chairPosition.x,
+            chairPosition.y + CAMERA_POSITIONS.SEATED.heightOffset,
+            chairPosition.z
+        );
+
+        // Calculate target rotation (looking at screen)
+        const targetLookAt = new THREE.Vector3(
+            chairPosition.x,
+            chairPosition.y + CAMERA_POSITIONS.SEATED.heightOffset,
+            CAMERA_POSITIONS.SEATED.lookAtOffset
+        );
+
+        // Create rotation matrix and convert to quaternion
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.lookAt(this.targetPosition, targetLookAt, new THREE.Vector3(0, 1, 0));
+        this.targetRotation.setFromRotationMatrix(rotationMatrix);
+
+        // Store chair position and update controls
+        this.chairPosition = this.targetPosition.clone();
+        this.updateSeatedControls();
+    }
+
+    updateSeatedControls() {
+        const config = CAMERA_POSITIONS.SEATED;
+
+        // Update control limits for seated view
+        this.controls.minPolarAngle = config.limits.minPolarAngle;
+        this.controls.maxPolarAngle = config.limits.maxPolarAngle;
+        this.controls.minAzimuthAngle = config.limits.minAzimuthAngle;
+        this.controls.maxAzimuthAngle = config.limits.maxAzimuthAngle;
+
+        // Disable zoom while seated
+        this.controls.enableZoom = false;
+        this.controls.minDistance = 0;
+        this.controls.maxDistance = 0;
     }
 
     resetView() {
+        if (this.isCreator) return;
+
         this.isTransitioning = true;
         this.transitionStartTime = Date.now();
-        
-        this.startPosition.copy(this.camera.position);
-        this.targetPosition.set(
-            CAMERA.INITIAL_POSITION.x,
-            CAMERA.INITIAL_POSITION.y,
-            CAMERA.INITIAL_POSITION.z
-        );
-        
-        this.controls.target.set(0, 0, 0);
-        this.controls.enabled = true;
-        this.controls.enableZoom = true;
-        this.isInChairView = false;
 
-        // Remettre la vitesse de rotation normale
-        this.controls.rotateSpeed = 0.5;
+        // Save start position and rotation
+        this.startPosition.copy(this.camera.position);
+        this.startRotation.copy(this.camera.quaternion);
+
+        // Reset to initial participant position
+        const config = CAMERA_POSITIONS.PARTICIPANT;
+        this.targetPosition.set(config.position.x, config.position.y, config.position.z);
+
+        // Calculate target rotation
+        const targetLookAt = new THREE.Vector3(config.lookAt.x, config.lookAt.y, config.lookAt.z);
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.lookAt(this.targetPosition, targetLookAt, new THREE.Vector3(0, 1, 0));
+        this.targetRotation.setFromRotationMatrix(rotationMatrix);
+
+        // Reset controls
+        this.controls.enabled = true;
+        this.setupControlsBasedOnRole();
+        
+        this.isInChairView = false;
+        this.chairPosition = null;
     }
 
     update() {
+        // For creator, ensure camera stays in fixed position
+        if (this.isCreator) {
+            const creatorPos = CAMERA_POSITIONS.CREATOR.position;
+            const creatorLookAt = CAMERA_POSITIONS.CREATOR.lookAt;
+            
+            // Force position to stay fixed
+            this.camera.position.set(creatorPos.x, creatorPos.y, creatorPos.z);
+            this.camera.lookAt(creatorLookAt.x, creatorLookAt.y, creatorLookAt.z);
+            return; // Skip other updates for creator
+        }
+
         if (this.isTransitioning) {
             const elapsed = Date.now() - this.transitionStartTime;
             const progress = Math.min(elapsed / this.transitionDuration, 1);
@@ -115,23 +188,34 @@ class CameraManager {
             // Smooth transition using easing
             const easeProgress = easeInOutCubic(progress);
             
-            // Update camera position
+            // Update position
             this.camera.position.lerpVectors(this.startPosition, this.targetPosition, easeProgress);
+            
+            // Update rotation
+            THREE.Quaternion.slerp(this.startRotation, this.targetRotation, this.camera.quaternion, easeProgress);
             
             if (progress >= 1) {
                 this.isTransitioning = false;
+                if (this.isInChairView) {
+                    // Update controls target for seated view
+                    this.controls.target.set(
+                        this.camera.position.x,
+                        this.camera.position.y,
+                        CAMERA_POSITIONS.SEATED.lookAtOffset
+                    );
+                }
             }
-        } else if (this.isInChairView) {
-            // Forcer la position de la caméra à rester fixe
-            this.camera.position.copy(this.fixedPosition);
-            
-            // Mettre à jour le centre de rotation pour qu'il reste toujours devant la caméra
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-            this.rotationCenter.copy(this.fixedPosition).add(forward);
-            this.controls.target.copy(this.rotationCenter);
         }
 
-        this.controls.update();
+        if (this.isInChairView && !this.isTransitioning) {
+            // Keep camera at chair position but allow looking around
+            this.camera.position.copy(this.chairPosition);
+        }
+
+        // Only update controls for participants
+        if (!this.isCreator) {
+            this.controls.update();
+        }
     }
 
     onWindowResize() {

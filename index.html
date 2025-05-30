@@ -105,6 +105,75 @@
       box-shadow: 0 0 10px rgba(255, 99, 71, 0.5);
     }
 
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(28, 28, 60, 0.95);
+      padding: 40px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-title {
+      color: white;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 2px solid #00ffe5;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 16px;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: #ff6347;
+      box-shadow: 0 0 10px rgba(255, 99, 71, 0.5);
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    .close-modal:hover {
+      color: #ff6347;
+    }
+
     #threejs-canvas {
       position: absolute;
       top: 0;
@@ -166,13 +235,24 @@
     </select>
 
     <button class="btn" id="newConferenceBtn">➕ Nouvelle conférence</button>
-    <button class="btn">🔗 Rejoindre une conférence</button>
+    <button class="btn" id="joinConferenceBtn">🔗 Rejoindre une conférence</button>
   </div>
 
   <!-- Overlay de caméra ajouté -->
   <div class="camera-overlay" id="cameraOverlay">
     <button class="close-camera" id="closeCamera">×</button>
     <video id="userVideo" autoplay playsinline></video>
+  </div>
+
+  <!-- Join Conference Modal -->
+  <div class="modal" id="joinModal">
+    <div class="modal-content">
+      <button class="close-modal" id="closeModal">&times;</button>
+      <h3 class="modal-title">Rejoindre une conférence</h3>
+      <input type="text" class="modal-input" id="conferenceId" placeholder="ID de la conférence">
+      <input type="text" class="modal-input" id="participantName" placeholder="Votre nom">
+      <button class="btn" id="confirmJoin">Rejoindre</button>
+    </div>
   </div>
 
   <script type="module" src="js/main.js"></script>

@@ -9,6 +9,10 @@ class RoomManager {
         this.roomHeight = ROOM_CONFIG.HEIGHT;
         this.roomDepth = ROOM_CONFIG.DEPTH;
         
+        // Get participant info
+        this.participantInfo = JSON.parse(localStorage.getItem('participantInfo') || '{}');
+        this.isCreator = this.participantInfo.role === 'host';
+        
         this.setupRoom();
         this.currentTheme = 'default';
         this.screenMesh = null;
@@ -17,30 +21,48 @@ class RoomManager {
         this.isCameraActive = false;
         this.isMirrored = false;
 
-        this.setupControls();
+        // Load camera devices but don't activate camera
+        if (this.isCreator) {
+            this.loadCameraList();
+            this.setupControls();
+        } else {
+            // Hide camera controls for participants
+            const controlsPanel = document.querySelector('.controls-panel');
+            if (controlsPanel) {
+                controlsPanel.style.display = 'none';
+            }
+        }
     }
 
     setupControls() {
+        // Only setup controls if user is the creator
+        if (!this.isCreator) return;
+
         // Bouton pour activer/désactiver la caméra
         const toggleButton = document.getElementById('toggleCamera');
-        toggleButton.addEventListener('click', () => this.toggleCamera());
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => this.toggleCamera());
+        }
 
         // Sélecteur de caméra
         const cameraSelect = document.getElementById('cameraSelect');
-        cameraSelect.addEventListener('change', (e) => this.switchCamera(e.target.value));
+        if (cameraSelect) {
+            cameraSelect.addEventListener('change', (e) => this.switchCamera(e.target.value));
+        }
 
         // Contrôles de taille
         const widthControl = document.getElementById('videoWidth');
         const heightControl = document.getElementById('videoHeight');
-        widthControl.addEventListener('input', () => this.updateVideoSize());
-        heightControl.addEventListener('input', () => this.updateVideoSize());
+        if (widthControl && heightControl) {
+            widthControl.addEventListener('input', () => this.updateVideoSize());
+            heightControl.addEventListener('input', () => this.updateVideoSize());
+        }
 
         // Bouton pour inverser la vidéo
         const mirrorButton = document.getElementById('mirrorVideo');
-        mirrorButton.addEventListener('click', () => this.toggleMirror());
-
-        // Charger la liste des caméras
-        this.loadCameraList();
+        if (mirrorButton) {
+            mirrorButton.addEventListener('click', () => this.toggleMirror());
+        }
     }
 
     async loadCameraList() {
@@ -63,6 +85,9 @@ class RoomManager {
     }
 
     async toggleCamera() {
+        // Only allow creator to toggle camera
+        if (!this.isCreator) return;
+
         const toggleButton = document.getElementById('toggleCamera');
         
         if (this.isCameraActive) {
@@ -72,14 +97,24 @@ class RoomManager {
                 this.currentStream = null;
             }
             if (this.screenMesh) {
-                this.scene.remove(this.screenMesh);
-                this.screenMesh = null;
+                // Reset to default inactive state
+                this.screenMesh.material.map = null;
+                this.screenMesh.material.color.setHex(0x333333);
+                this.screenMesh.material.opacity = 0.5;
+                this.screenMesh.material.needsUpdate = true;
             }
             this.isCameraActive = false;
             toggleButton.classList.remove('active');
         } else {
             // Activer la caméra
-            this.setupCamera();
+            await this.setupCamera();
+            if (this.screenMesh && this.videoTexture) {
+                this.screenMesh.material.map = this.videoTexture;
+                this.screenMesh.material.color.setHex(0xffffff);
+                this.screenMesh.material.opacity = 1;
+                this.screenMesh.material.needsUpdate = true;
+            }
+            this.isCameraActive = true;
             toggleButton.classList.add('active');
         }
     }
@@ -187,7 +222,7 @@ class RoomManager {
         this.createFloor();
         this.createWalls();
         this.createScreen();
-        this.setupCamera();
+        // Remove automatic camera setup
     }
 
     createFloor() {
@@ -311,10 +346,10 @@ class RoomManager {
         
         const screenGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight);
         const screenMaterial = new THREE.MeshBasicMaterial({
-            map: this.videoTexture,
+            color: 0x333333, // Dark gray color when camera is off
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 1
+            opacity: 0.5
         });
         
         this.screenMesh = new THREE.Mesh(screenGeometry, screenMaterial);
