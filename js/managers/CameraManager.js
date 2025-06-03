@@ -97,7 +97,7 @@ class CameraManager {
         this.isTransitioning = true;
         this.transitionStartTime = Date.now();
         this.isInChairView = true;
-
+        
         // Save start position and rotation
         this.startPosition.copy(this.camera.position);
         this.startRotation.copy(this.camera.quaternion);
@@ -146,7 +146,7 @@ class CameraManager {
 
         this.isTransitioning = true;
         this.transitionStartTime = Date.now();
-
+        
         // Save start position and rotation
         this.startPosition.copy(this.camera.position);
         this.startRotation.copy(this.camera.quaternion);
@@ -214,7 +214,7 @@ class CameraManager {
 
         // Only update controls for participants
         if (!this.isCreator) {
-            this.controls.update();
+        this.controls.update();
         }
     }
 
